@@ -3,19 +3,19 @@
 Leadership is a library for a cluster leader election on top of a distributed
 Key/Value store.
 
-It is built using the `docker/libkv` library and is designed to work across multiple
+It is built using the `abronan/valkeyrie` library and is designed to work across multiple
 storage backends.
 
-You can use `leadership` with `Consul`, `etcd` and `Zookeeper`.
+You can use `leadership` with `Consul`, `etcd`, `Zookeeper` and `redis` (with key space notifications).
 
 ```go
-// Create a store using pkg/store.
-client, err := store.NewStore("consul", []string{"127.0.0.1:8500"}, &store.Config{})
+// Create a store using abronan/valkeyrie.
+client, err := valkeyrie.NewStore("consul", []string{"127.0.0.1:8500"}, &store.Config{})
 if err != nil {
 	panic(err)
 }
 
-underwood := leadership.NewCandidate(client, "service/swarm/leader", "underwood", 15*time.Second)
+underwood := leadership.NewCandidate(client, "service/leader", "underwood", 15*time.Second)
 electedCh, _ := underwood.RunForElection()
 
 for isElected := range electedCh {
@@ -45,7 +45,7 @@ for isElected := range electedCh {
 It is possible to follow an election in real-time and get notified whenever
 there is a change in leadership:
 ```go
-follower := leadership.NewFollower(client, "service/swarm/leader")
+follower := leadership.NewFollower(client, "service/leader")
 leaderCh, _ := follower.FollowElection()
 for leader := range leaderCh {
 	// Leader is a string containing the value passed to `NewCandidate`.
@@ -66,14 +66,14 @@ because the store becomes unavailable, you can retry the process later.
 
 ```go
 func participate() {
-    // Create a store using pkg/store.
-    client, err := store.NewStore("consul", []string{"127.0.0.1:8500"}, &store.Config{})
+    // Create a store using abronan/valkeyrie.
+    client, err := valkeyrie.NewStore("consul", []string{"127.0.0.1:8500"}, &store.Config{})
     if err != nil {
         panic(err)
     }
 
     waitTime := 10 * time.Second
-    underwood := leadership.NewCandidate(client, "service/swarm/leader", "underwood", 15*time.Second)
+    underwood := leadership.NewCandidate(client, "service/leader", "underwood", 15*time.Second)
 
     go func() {
         for {

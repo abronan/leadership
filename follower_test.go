@@ -3,22 +3,22 @@ package leadership
 import (
 	"testing"
 
-	"github.com/docker/libkv/store"
-	libkvmock "github.com/docker/libkv/store/mock"
+	"github.com/abronan/valkeyrie/store"
+	kvmock "github.com/abronan/valkeyrie/store/mock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
 func TestFollower(t *testing.T) {
-	kv, err := libkvmock.New([]string{}, nil)
+	kv, err := kvmock.New([]string{}, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, kv)
 
-	mockStore := kv.(*libkvmock.Mock)
+	mockStore := kv.(*kvmock.Mock)
 
 	kvCh := make(chan *store.KVPair)
 	var mockKVCh <-chan *store.KVPair = kvCh
-	mockStore.On("Watch", "test_key", mock.Anything).Return(mockKVCh, nil)
+	mockStore.On("Watch", "test_key", mock.Anything, mock.Anything).Return(mockKVCh, nil)
 
 	follower := NewFollower(kv, "test_key")
 	leaderCh, errCh := follower.FollowElection()

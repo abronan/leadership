@@ -2,8 +2,9 @@ package leadership
 
 import (
 	"errors"
+	"sync"
 
-	"github.com/docker/libkv/store"
+	"github.com/abronan/valkeyrie/store"
 )
 
 // Follower can follow an election in real-time and push notifications whenever
@@ -12,6 +13,7 @@ type Follower struct {
 	client store.Store
 	key    string
 
+	lock     sync.Mutex
 	leader   string
 	leaderCh chan string
 	stopCh   chan struct{}
@@ -29,6 +31,8 @@ func NewFollower(client store.Store, key string) *Follower {
 
 // Leader returns the current leader.
 func (f *Follower) Leader() string {
+	f.lock.Lock()
+	defer f.lock.Unlock()
 	return f.leader
 }
 
@@ -51,7 +55,7 @@ func (f *Follower) follow() {
 	defer close(f.leaderCh)
 	defer close(f.errCh)
 
-	ch, err := f.client.Watch(f.key, f.stopCh)
+	ch, err := f.client.Watch(f.key, f.stopCh, nil)
 	if err != nil {
 		f.errCh <- err
 	}
@@ -59,16 +63,22 @@ func (f *Follower) follow() {
 	f.leader = ""
 	for kv := range ch {
 		if kv == nil {
-			continue
+			break
 		}
+
 		curr := string(kv.Value)
+
+		f.lock.Lock()
 		if curr == f.leader {
+			f.lock.Unlock()
 			continue
 		}
 		f.leader = curr
+		f.lock.Unlock()
+
 		f.leaderCh <- f.leader
 	}
 
 	// Channel closed, we return an error
-	f.errCh <- errors.New("Leader Election: watch leader channel closed, the store may be unavailable...")
+	f.errCh <- errors.New("leader Election: watch leader channel closed, the store may be unavailable")
 }
