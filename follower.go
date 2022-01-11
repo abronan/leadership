@@ -4,7 +4,7 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/abronan/valkeyrie/store"
+	"github.com/kvtools/valkeyrie/store"
 )
 
 // Follower can follow an election in real-time and push notifications whenever

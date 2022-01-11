@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	kvmock "github.com/abronan/valkeyrie/store/mock"
+	kvmock "github.com/kvtools/valkeyrie/store/mock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )

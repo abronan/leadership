@@ -3,13 +3,13 @@
 Leadership is a library for a cluster leader election on top of a distributed
 Key/Value store.
 
-It is built using the `abronan/valkeyrie` library and is designed to work across multiple
+It is built using the `kvtools/valkeyrie` library and is designed to work across multiple
 storage backends.
 
 You can use `leadership` with `Consul`, `etcd`, `Zookeeper` and `redis` (with key space notifications).
 
 ```go
-// Create a store using abronan/valkeyrie.
+// Create a store using kvtools/valkeyrie.
 client, err := valkeyrie.NewStore("consul", []string{"127.0.0.1:8500"}, &store.Config{})
 if err != nil {
 	panic(err)
@@ -66,7 +66,7 @@ because the store becomes unavailable, you can retry the process later.
 
 ```go
 func participate() {
-    // Create a store using abronan/valkeyrie.
+    // Create a store using kvtools/valkeyrie.
     client, err := valkeyrie.NewStore("consul", []string{"127.0.0.1:8500"}, &store.Config{})
     if err != nil {
         panic(err)
