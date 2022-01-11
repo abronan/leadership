@@ -3,8 +3,8 @@ package leadership
 import (
 	"testing"
 
-	"github.com/abronan/valkeyrie/store"
-	kvmock "github.com/abronan/valkeyrie/store/mock"
+	"github.com/kvtools/valkeyrie/store"
+	kvmock "github.com/kvtools/valkeyrie/store/mock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
