@@ -1,30 +1,36 @@
 package leadership
 
 import (
+	"abronan/leadership/mockstore"
+	"context"
 	"testing"
 	"time"
 
-	kvmock "github.com/kvtools/valkeyrie/store/mock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
 func TestCandidate(t *testing.T) {
-	kv, err := kvmock.New([]string{}, nil)
+	kv, err := mockstore.New([]string{}, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, kv)
 
-	mockStore := kv.(*kvmock.Mock)
-	mockLock := &kvmock.Lock{}
-	mockStore.On("NewLock", "test_key", mock.Anything).Return(mockLock, nil)
+	mockStore := kv.(*mockstore.Mock)
+	mockLock := &mockstore.Lock{}
+	mockStore.On("NewLock", context.Background(), mock.Anything, mock.AnythingOfType("*store.LockOptions")).Return(mockLock, nil)
 
 	// Lock and unlock always succeeds.
 	lostCh := make(chan struct{})
 	var mockLostCh <-chan struct{} = lostCh
-	mockLock.On("Lock", mock.Anything).Return(mockLostCh, nil)
-	mockLock.On("Unlock").Return(nil)
+	mockLock.On("Lock", context.Background()).Return(mockLostCh, nil)
+	mockLock.On("Unlock", context.Background()).Return(nil)
 
 	candidate := NewCandidate(kv, "test_key", "test_node", 0)
+
+	// Calling stop when not running for the election should not panic and should
+	// result in no side effects observed when starting to run for the election.
+	candidate.Stop()
+
 	electedCh, _ := candidate.RunForElection()
 
 	// Should issue a false upon start, no matter what.
@@ -57,6 +63,7 @@ func TestCandidate(t *testing.T) {
 				mockStore.AssertExpectations(t)
 				return
 			}
+
 		case <-time.After(1 * time.Second):
 			t.Fatalf("electedCh not closed correctly")
 		}

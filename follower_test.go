@@ -1,26 +1,35 @@
 package leadership
 
 import (
+	"abronan/leadership/mockstore"
+	"context"
 	"testing"
 
 	"github.com/kvtools/valkeyrie/store"
-	kvmock "github.com/kvtools/valkeyrie/store/mock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
 func TestFollower(t *testing.T) {
-	kv, err := kvmock.New([]string{}, nil)
+	kv, err := mockstore.New([]string{}, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, kv)
 
-	mockStore := kv.(*kvmock.Mock)
+	mockStore := kv.(*mockstore.Mock)
 
 	kvCh := make(chan *store.KVPair)
 	var mockKVCh <-chan *store.KVPair = kvCh
-	mockStore.On("Watch", "test_key", mock.Anything, mock.Anything).Return(mockKVCh, nil)
+
+	ctx, _ := context.WithCancel(context.Background())
+
+	mockStore.On("Watch", ctx, mock.Anything, mock.AnythingOfType("*store.ReadOptions")).Return(mockKVCh, nil)
 
 	follower := NewFollower(kv, "test_key")
+
+	// Calling stop when not following an election should not panic and should
+	// result in no side effects observed when starting to follow an election.
+	follower.Stop()
+
 	leaderCh, errCh := follower.FollowElection()
 
 	// Simulate leader updates
@@ -44,7 +53,8 @@ func TestFollower(t *testing.T) {
 	// Assert that we receive an error from the error chan to deal with the failover
 	err, open := <-errCh
 	assert.True(t, open)
-	assert.NotNil(t, err)
+	assert.Error(t, err)
+	assert.Equal(t, err, ErrStoreUnavailable)
 
 	// Ensure that the chan is closed
 	_, open = <-leaderCh
