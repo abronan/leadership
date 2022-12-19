@@ -1,11 +1,11 @@
 package leadership
 
 import (
-	"abronan/leadership/mockstore"
 	"context"
 	"testing"
 	"time"
 
+	"github.com/abronan/leadership/mockstore"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )

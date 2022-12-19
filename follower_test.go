@@ -1,10 +1,10 @@
 package leadership
 
 import (
-	"abronan/leadership/mockstore"
 	"context"
 	"testing"
 
+	"github.com/abronan/leadership/mockstore"
 	"github.com/kvtools/valkeyrie/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"

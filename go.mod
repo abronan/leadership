@@ -1,4 +1,4 @@
-module abronan/leadership
+module github.com/abronan/leadership
 
 go 1.19
 
