@@ -1,6 +1,7 @@
 package leadership
 
 import (
+	"context"
 	"sync"
 	"time"
 
@@ -17,14 +18,14 @@ type Candidate struct {
 	key    string
 	node   string
 
-	electedCh chan bool
-	lock      sync.Mutex
-	lockTTL   time.Duration
-	leader    bool
-	stopCh    chan struct{}
-	stopRenew chan struct{}
-	resignCh  chan bool
-	errCh     chan error
+	electedCh  chan bool
+	lock       sync.Mutex
+	lockTTL    time.Duration
+	leader     bool
+	cancelFunc func()
+	stopRenew  chan struct{}
+	resignCh   chan bool
+	errCh      chan error
 }
 
 // NewCandidate creates a new Candidate
@@ -37,7 +38,6 @@ func NewCandidate(client store.Store, key, node string, ttl time.Duration) *Cand
 		leader:   false,
 		lockTTL:  ttl,
 		resignCh: make(chan bool),
-		stopCh:   make(chan struct{}),
 	}
 }
 
@@ -58,14 +58,20 @@ func (c *Candidate) RunForElection() (<-chan bool, <-chan error) {
 	c.electedCh = make(chan bool)
 	c.errCh = make(chan error)
 
-	go c.campaign()
+	ctx, cancel := context.WithCancel(context.Background())
+	c.cancelFunc = cancel
+
+	go c.campaign(ctx)
 
 	return c.electedCh, c.errCh
 }
 
 // Stop running for election.
+// Calling stop when not running for the election results in no effect.
 func (c *Candidate) Stop() {
-	close(c.stopCh)
+	if c.cancelFunc != nil {
+		c.cancelFunc()
+	}
 }
 
 // Resign forces the candidate to step-down and try again.
@@ -107,13 +113,14 @@ func (c *Candidate) initLock() (store.Locker, error) {
 	lockOpts.RenewLock = make(chan struct{})
 	c.stopRenew = lockOpts.RenewLock
 
-	lock, err := c.client.NewLock(c.key, lockOpts)
+	lock, err := c.client.NewLock(context.Background(), c.key, lockOpts)
 	return lock, err
 }
 
-func (c *Candidate) campaign() {
+func (c *Candidate) campaign(ctx context.Context) {
 	defer close(c.electedCh)
 	defer close(c.errCh)
+	defer c.cancelFunc()
 
 	for {
 		// Start as a follower.
@@ -125,7 +132,7 @@ func (c *Candidate) campaign() {
 			return
 		}
 
-		lostCh, err := lock.Lock(nil)
+		lostCh, err := lock.Lock(context.Background())
 		if err != nil {
 			c.errCh <- err
 			return
@@ -138,11 +145,11 @@ func (c *Candidate) campaign() {
 		case <-c.resignCh:
 			// We were asked to resign, give up the lock and go back
 			// campaigning.
-			lock.Unlock()
-		case <-c.stopCh:
+			lock.Unlock(context.Background())
+		case <-ctx.Done():
 			// Give up the leadership and quit.
 			if c.leader {
-				lock.Unlock()
+				lock.Unlock(context.Background())
 			}
 			return
 		case <-lostCh:
